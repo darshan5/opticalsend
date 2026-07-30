@@ -5,22 +5,13 @@ const LN2 = 0.6931471805599453;
 function dlog(x: number): number {
   let e = 0;
   let m = x;
-  while (m >= 1.5) {
-    m /= 2;
-    e++;
-  }
-  while (m < 0.75) {
-    m *= 2;
-    e--;
-  }
+  while (m >= 1.5) { m /= 2; e++; }
+  while (m < 0.75) { m *= 2; e--; }
   const z = (m - 1) / (m + 1);
   const z2 = z * z;
   let term = z;
   let sum = 0;
-  for (let n = 1; n <= 21; n += 2) {
-    sum += term / n;
-    term *= z2;
-  }
+  for (let n = 1; n <= 21; n += 2) { sum += term / n; term *= z2; }
   return e * LN2 + 2 * sum;
 }
 
@@ -29,10 +20,7 @@ const SOLITON_DELTA = 0.5;
 
 function solitonCdf(k: number): Float64Array {
   const cdf = new Float64Array(k);
-  if (k === 1) {
-    cdf[0] = 1;
-    return cdf;
-  }
+  if (k === 1) { cdf[0] = 1; return cdf; }
   const R = Math.max(1, SOLITON_C * dlog(k / SOLITON_DELTA) * Math.sqrt(k));
   const spike = Math.min(k, Math.ceil(k / R));
   let total = 0;
@@ -58,13 +46,8 @@ function frameSeed(sessionId: number, seq: number): number {
 function frameIndices(k: number, cdf: Float64Array, sessionId: number, seq: number): number[] {
   const rnd = splitmix32(frameSeed(sessionId, seq));
   const u = rnd() * 2 ** -32;
-  let lo = 0;
-  let hi = k - 1;
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (cdf[mid]! >= u) hi = mid;
-    else lo = mid + 1;
-  }
+  let lo = 0, hi = k - 1;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (cdf[mid]! >= u) hi = mid; else lo = mid + 1; }
   const d = Math.min(k, lo + 1);
   if (d > k >> 3) {
     const scratch = new Uint32Array(k);
@@ -72,9 +55,7 @@ function frameIndices(k: number, cdf: Float64Array, sessionId: number, seq: numb
     const out: number[] = new Array<number>(d);
     for (let i = 0; i < d; i++) {
       const j = i + (rnd() % (k - i));
-      const t = scratch[i]!;
-      scratch[i] = scratch[j]!;
-      scratch[j] = t;
+      const t = scratch[i]!; scratch[i] = scratch[j]!; scratch[j] = t;
       out[i] = scratch[i]!;
     }
     return out;
@@ -94,11 +75,7 @@ export class LTEncoder {
   private readonly blocks: Uint32Array;
   private readonly cdf: Float64Array;
 
-  constructor(
-    payload: Uint8Array,
-    readonly blockLen: number,
-    readonly sessionId: number,
-  ) {
+  constructor(payload: Uint8Array, readonly blockLen: number, readonly sessionId: number) {
     this.k = Math.max(1, Math.ceil(payload.length / blockLen));
     this.words = Math.ceil(blockLen / 4);
     this.blocks = new Uint32Array(this.k * this.words);
@@ -121,10 +98,7 @@ export class LTEncoder {
   }
 }
 
-interface PendingFrame {
-  idx: Set<number>;
-  words: Uint32Array;
-}
+interface PendingFrame { idx: Set<number>; words: Uint32Array; }
 
 export class LTDecoder {
   private readonly words: number;
@@ -136,54 +110,27 @@ export class LTDecoder {
   framesNew = 0;
   framesDup = 0;
 
-  constructor(
-    readonly k: number,
-    readonly blockLen: number,
-    readonly sessionId: number,
-    readonly totalLen: number,
-  ) {
+  constructor(readonly k: number, readonly blockLen: number, readonly sessionId: number, readonly totalLen: number) {
     this.words = Math.ceil(blockLen / 4);
     this.cdf = solitonCdf(k);
     this.solved = new Array<Uint32Array | null>(k).fill(null);
   }
 
-  get isComplete(): boolean {
-    return this.solvedCount >= this.k;
-  }
+  get isComplete(): boolean { return this.solvedCount >= this.k; }
 
   addFrame(seq: number, block: Uint8Array): void {
-    if (this.seen.has(seq)) {
-      this.framesDup++;
-      return;
-    }
+    if (this.seen.has(seq)) { this.framesDup++; return; }
     this.seen.add(seq);
     this.framesNew++;
     if (this.isComplete) return;
-
     const idx = new Set(frameIndices(this.k, this.cdf, this.sessionId, seq));
     const words = new Uint32Array(this.words);
     new Uint8Array(words.buffer).set(block.subarray(0, this.blockLen));
-    for (const b of [...idx]) {
-      const s = this.solved[b];
-      if (s) {
-        xorInto(words, s);
-        idx.delete(b);
-      }
-    }
+    for (const b of [...idx]) { const s = this.solved[b]; if (s) { xorInto(words, s); idx.delete(b); } }
     if (idx.size === 0) return;
-    if (idx.size === 1) {
-      this.resolve(idx.values().next().value!, words);
-      return;
-    }
+    if (idx.size === 1) { this.resolve(idx.values().next().value!, words); return; }
     const pf: PendingFrame = { idx, words };
-    for (const b of idx) {
-      let set = this.byBlock.get(b);
-      if (!set) {
-        set = new Set();
-        this.byBlock.set(b, set);
-      }
-      set.add(pf);
-    }
+    for (const b of idx) { let set = this.byBlock.get(b); if (!set) { set = new Set(); this.byBlock.set(b, set); } set.add(pf); }
   }
 
   private resolve(b0: number, w0: Uint32Array): void {

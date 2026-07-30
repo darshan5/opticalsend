@@ -66,3 +66,18 @@ export function splitmix32(seed: number): () => number {
     return t >>> 0;
   };
 }
+
+export function wrapPayload(name: string, data: Uint8Array): Uint8Array {
+  const nameBytes = new TextEncoder().encode(name);
+  const out = new Uint8Array(2 + nameBytes.length + data.length);
+  new DataView(out.buffer).setUint16(0, nameBytes.length, true);
+  out.set(nameBytes, 2);
+  out.set(data, 2 + nameBytes.length);
+  return out;
+}
+
+export function unwrapPayload(data: Uint8Array): { name: string; bytes: Uint8Array } {
+  const nameLen = new DataView(data.buffer, data.byteOffset).getUint16(0, true);
+  const name = new TextDecoder().decode(data.subarray(2, 2 + nameLen));
+  return { name, bytes: data.subarray(2 + nameLen) };
+}

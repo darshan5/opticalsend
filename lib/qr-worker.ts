@@ -1,10 +1,9 @@
-import wasmUrl from "zxing-wasm/reader/zxing_reader.wasm?url";
 import { prepareZXingModule, readBarcodes } from "zxing-wasm/reader";
 
 prepareZXingModule({
   overrides: {
     locateFile: (path: string, prefix: string) =>
-      path.endsWith(".wasm") ? wasmUrl : prefix + path,
+      path.endsWith(".wasm") ? "/zxing_reader.wasm" : prefix + path,
   },
 });
 
