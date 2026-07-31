@@ -165,23 +165,31 @@ export default function SendPage() {
       </nav>
 
       {!file ? (
-        <div
-          className={`dropzone${over ? " over" : ""}`}
-          onDragOver={(e) => { e.preventDefault(); setOver(true); }}
-          onDragLeave={() => setOver(false)}
-          onDrop={onDrop}
-          onClick={() => inputRef.current?.click()}
-        >
-          <p className="big">+</p>
-          <p>Drop a file here or tap to browse</p>
-          <p style={{ marginTop: 8 }}>Any file type, any size</p>
+        <>
+          <button
+            className="upload-btn"
+            onClick={() => inputRef.current?.click()}
+          >
+            <span className="upload-icon">+</span>
+            Choose a file to send
+            <span className="upload-sub">Any file type, any size</span>
+          </button>
+          <div
+            className={`dropzone${over ? " over" : ""}`}
+            onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+            onDragLeave={() => setOver(false)}
+            onDrop={onDrop}
+            onClick={() => inputRef.current?.click()}
+          >
+            <p>or drag and drop here</p>
+          </div>
           <input
             ref={inputRef}
             type="file"
             hidden
             onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
           />
-        </div>
+        </>
       ) : (
         <>
           <div className="file-info">

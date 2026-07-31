@@ -247,7 +247,11 @@ export default function ReceivePage() {
               </label>
             </div>
           </details>
-          <button className="btn" onClick={() => void start()}>Start camera</button>
+          <button className="upload-btn" onClick={() => void start()}>
+            <span className="upload-icon">&#x25CE;</span>
+            Start camera
+            <span className="upload-sub">Point at the sender&apos;s QR code</span>
+          </button>
         </>
       )}
 
