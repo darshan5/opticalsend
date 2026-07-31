@@ -4,6 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "OpticalSend",
   description: "Send files between devices using fountain-coded QR — screen to camera, no network.",
+  icons: { icon: "/icon.svg" },
 };
 
 export const viewport: Viewport = {
