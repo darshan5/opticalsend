@@ -182,10 +182,10 @@ export default function ReceivePage() {
       const w = new Worker(new URL("../../lib/qr-worker.ts", import.meta.url));
       const slot = i;
       w.onmessage = (e: MessageEvent) => {
-        const { id, bytes } = e.data as { id: number; bytes: Uint8Array | null };
+        const { id, results } = e.data as { id: number; results: Uint8Array[] };
         if (id === -1) return;
         busy[slot] = false;
-        if (bytes) onDecoded(bytes);
+        for (const bytes of results) onDecoded(bytes);
       };
       workers.push(w);
       busy.push(false);

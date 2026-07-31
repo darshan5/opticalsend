@@ -25,6 +25,7 @@ export default function SendPage() {
   const [fps, setFps] = useState(24);
   const [frameBytes, setFrameBytes] = useState(1465);
   const [ecc, setEcc] = useState<"L" | "M" | "Q" | "H">("L");
+  const [grid, setGrid] = useState(1);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const genRef = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -49,6 +50,10 @@ export default function SendPage() {
         totalLen: wrapped.length, payloadFnv: fnv1a(wrapped),
       };
 
+      const gridCols = grid;
+      const gridRows = grid;
+      const codesPerFrame = gridCols * gridRows;
+
       let version: number | undefined;
       let modules = 0;
       let scale = 1;
@@ -58,44 +63,65 @@ export default function SendPage() {
 
       const sizeCanvas = () => {
         const dpr = window.devicePixelRatio || 1;
-        const total = modules + 2 * MARGIN;
-        const maxPx = Math.min(0.9 * Math.min(window.innerWidth, window.innerHeight), 600);
-        scale = Math.max(1, Math.floor((maxPx * dpr) / total));
-        staging.width = total;
-        staging.height = total;
-        canvas.width = total * scale;
-        canvas.height = total * scale;
-        canvas.style.width = `${(total * scale) / dpr}px`;
-        canvas.style.height = `${(total * scale) / dpr}px`;
+        const cellSize = modules + 2 * MARGIN;
+        const totalW = gridCols * cellSize;
+        const totalH = gridRows * cellSize;
+        const maxPx = Math.min(0.92 * Math.min(window.innerWidth, window.innerHeight), 700);
+        scale = Math.max(1, Math.floor((maxPx * dpr) / Math.max(totalW, totalH)));
+        staging.width = totalW;
+        staging.height = totalH;
+        canvas.width = totalW * scale;
+        canvas.height = totalH * scale;
+        canvas.style.width = `${(totalW * scale) / dpr}px`;
+        canvas.style.height = `${(totalH * scale) / dpr}px`;
       };
 
       const makeFrame = (): ImageData => {
-        const bytes = packFrame({ ...header, seq: nextSeq }, encoder.encode(nextSeq));
-        nextSeq++;
-        const qr = QRCode.create(
-          [{ data: bytes, mode: "byte" } as unknown as QRCode.QRCodeSegment],
-          { errorCorrectionLevel: ecc, version, maskPattern: 4 },
-        );
-        if (version === undefined) {
-          version = qr.version;
-          modules = qr.modules.size;
-          sizeCanvas();
-          setSpecs(
-            `${fps} FPS · ${frameBytes} B/frame · V${version} · ECC ${ecc} · ${formatSize(wrapped.length)}${ratio} · K=${encoder.k}`,
+        const firstSeq = nextSeq;
+        const qrs: { data: Uint8Array; size: number }[] = [];
+        for (let i = 0; i < codesPerFrame; i++) {
+          const bytes = packFrame({ ...header, seq: nextSeq }, encoder.encode(nextSeq));
+          nextSeq++;
+          const qr = QRCode.create(
+            [{ data: bytes, mode: "byte" } as unknown as QRCode.QRCodeSegment],
+            { errorCorrectionLevel: ecc, version, maskPattern: 4 },
           );
+          if (version === undefined) {
+            version = qr.version;
+            modules = qr.modules.size;
+            sizeCanvas();
+            setSpecs(
+              `${fps} FPS · ${codesPerFrame > 1 ? `${gridCols}x${gridRows} grid · ` : ""}${frameBytes} B/frame · V${version} · ECC ${ecc} · ${formatSize(wrapped.length)}${ratio} · K=${encoder.k}`,
+            );
+          }
+          qrs.push({ data: qr.modules.data, size: qr.modules.size });
         }
-        const size = qr.modules.size;
-        const data = qr.modules.data;
-        const total = size + 2 * MARGIN;
-        const img = new ImageData(total, total);
+
+        const cellSize = modules + 2 * MARGIN;
+        const totalW = gridCols * cellSize;
+        const totalH = gridRows * cellSize;
+        const img = new ImageData(totalW, totalH);
         const px = new Uint32Array(img.data.buffer);
         px.fill(0xffffffff);
-        for (let y = 0; y < size; y++) {
-          const row = (y + MARGIN) * total + MARGIN;
-          const src = y * size;
-          for (let x = 0; x < size; x++) {
-            if (data[src + x]) px[row + x] = 0xff000000;
+
+        let qi = 0;
+        for (let gy = 0; gy < gridRows; gy++) {
+          for (let gx = 0; gx < gridCols; gx++) {
+            const q = qrs[qi++]!;
+            const ox = gx * cellSize + MARGIN;
+            const oy = gy * cellSize + MARGIN;
+            for (let y = 0; y < q.size; y++) {
+              const dstRow = (oy + y) * totalW + ox;
+              const srcRow = y * q.size;
+              for (let x = 0; x < q.size; x++) {
+                if (q.data[srcRow + x]) px[dstRow + x] = 0xff000000;
+              }
+            }
           }
+        }
+
+        if (firstSeq === 0) {
+          // intentional: suppress unused warning
         }
         return img;
       };
@@ -134,7 +160,7 @@ export default function SendPage() {
         (navigator as any).wakeLock?.request("screen").catch(() => {});
       } catch { /* fine */ }
     },
-    [fps, frameBytes, ecc],
+    [fps, frameBytes, ecc, grid],
   );
 
   useEffect(() => {
@@ -238,6 +264,14 @@ export default function SendPage() {
           <details className="settings">
             <summary>Settings</summary>
             <div className="row">
+              <label>
+                grid
+                <select value={grid} onChange={(e) => { setGrid(Number(e.target.value)); clearFile(); }}>
+                  <option value={1}>1x1</option>
+                  <option value={2}>2x2 (4x speed)</option>
+                  <option value={3}>3x3 (9x speed)</option>
+                </select>
+              </label>
               <label>
                 tx fps
                 <select value={fps} onChange={(e) => setFps(Number(e.target.value))}>

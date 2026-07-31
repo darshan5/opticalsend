@@ -16,14 +16,16 @@ ctx.onmessage = async (e: MessageEvent) => {
   const { id, buf, w, h } = e.data as { id: number; buf: ArrayBuffer; w: number; h: number };
   try {
     const img = new ImageData(new Uint8ClampedArray(buf), w, h);
-    const results = await readBarcodes(img, { formats: ["QRCode"], maxNumberOfSymbols: 1 });
-    const r = results.find((x) => x.isValid && x.bytes.length > 0);
-    ctx.postMessage({ id, bytes: r ? r.bytes : null });
+    const results = await readBarcodes(img, { formats: ["QRCode"], maxNumberOfSymbols: 9 });
+    const valid = results
+      .filter((x) => x.isValid && x.bytes.length > 0)
+      .map((x) => x.bytes);
+    ctx.postMessage({ id, results: valid });
   } catch {
-    ctx.postMessage({ id, bytes: null });
+    ctx.postMessage({ id, results: [] });
   }
 };
 
 void readBarcodes(new ImageData(8, 8), { formats: ["QRCode"] })
   .catch(() => undefined)
-  .then(() => ctx.postMessage({ id: -1, bytes: null }));
+  .then(() => ctx.postMessage({ id: -1, results: [] }));
