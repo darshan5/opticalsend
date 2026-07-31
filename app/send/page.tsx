@@ -205,6 +205,40 @@ export default function SendPage() {
         </div>
       )}
 
+      {!streaming && (
+        <details className="settings">
+          <summary>Settings</summary>
+          <div className="row">
+            <label>
+              grid
+              <select value={grid} onChange={(e) => setGrid(Number(e.target.value))}>
+                <option value={1}>1x1</option>
+                <option value={2}>2x2 (4x speed)</option>
+                <option value={3}>3x3 (9x speed)</option>
+              </select>
+            </label>
+            <label>
+              tx fps
+              <select value={fps} onChange={(e) => setFps(Number(e.target.value))}>
+                {[10, 15, 20, 24, 30, 60].map((v) => <option key={v}>{v}</option>)}
+              </select>
+            </label>
+            <label>
+              bytes / frame
+              <select value={frameBytes} onChange={(e) => setFrameBytes(Number(e.target.value))}>
+                {[500, 1000, 1465, 1850, 2331, 2953].map((v) => <option key={v}>{v}</option>)}
+              </select>
+            </label>
+            <label>
+              error correction
+              <select value={ecc} onChange={(e) => setEcc(e.target.value as "L" | "M" | "Q" | "H")}>
+                {["L", "M", "Q", "H"].map((v) => <option key={v}>{v}</option>)}
+              </select>
+            </label>
+          </div>
+        </details>
+      )}
+
       {!streaming && mode === "file" && (
         <>
           <button className="upload-btn" onClick={() => inputRef.current?.click()}>
@@ -260,38 +294,6 @@ export default function SendPage() {
           </div>
 
           <p className="hint">{specs}</p>
-
-          <details className="settings">
-            <summary>Settings</summary>
-            <div className="row">
-              <label>
-                grid
-                <select value={grid} onChange={(e) => { setGrid(Number(e.target.value)); clearFile(); }}>
-                  <option value={1}>1x1</option>
-                  <option value={2}>2x2 (4x speed)</option>
-                  <option value={3}>3x3 (9x speed)</option>
-                </select>
-              </label>
-              <label>
-                tx fps
-                <select value={fps} onChange={(e) => setFps(Number(e.target.value))}>
-                  {[10, 15, 20, 24, 30, 60].map((v) => <option key={v}>{v}</option>)}
-                </select>
-              </label>
-              <label>
-                bytes / frame
-                <select value={frameBytes} onChange={(e) => setFrameBytes(Number(e.target.value))}>
-                  {[500, 1000, 1465, 1850, 2331, 2953].map((v) => <option key={v}>{v}</option>)}
-                </select>
-              </label>
-              <label>
-                error correction
-                <select value={ecc} onChange={(e) => setEcc(e.target.value as "L" | "M" | "Q" | "H")}>
-                  {["L", "M", "Q", "H"].map((v) => <option key={v}>{v}</option>)}
-                </select>
-              </label>
-            </div>
-          </details>
 
           <div className="stage">
             <canvas ref={canvasRef} width={16} height={16} />
