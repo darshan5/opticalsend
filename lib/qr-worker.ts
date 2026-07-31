@@ -12,15 +12,49 @@ const ctx = self as unknown as {
   postMessage(msg: unknown, transfer?: Transferable[]): void;
 };
 
+function extractChannel(rgba: Uint8ClampedArray, w: number, h: number, channel: number): ImageData {
+  const out = new ImageData(w, h);
+  const d = out.data;
+  for (let i = 0; i < w * h; i++) {
+    const v = rgba[i * 4 + channel]!;
+    const o = i * 4;
+    d[o] = v;
+    d[o + 1] = v;
+    d[o + 2] = v;
+    d[o + 3] = 255;
+  }
+  return out;
+}
+
 ctx.onmessage = async (e: MessageEvent) => {
-  const { id, buf, w, h } = e.data as { id: number; buf: ArrayBuffer; w: number; h: number };
+  const { id, buf, w, h, color } = e.data as {
+    id: number; buf: ArrayBuffer; w: number; h: number; color?: boolean;
+  };
   try {
-    const img = new ImageData(new Uint8ClampedArray(buf), w, h);
-    const results = await readBarcodes(img, { formats: ["QRCode"], maxNumberOfSymbols: 9 });
-    const valid = results
-      .filter((x) => x.isValid && x.bytes.length > 0)
-      .map((x) => x.bytes);
-    ctx.postMessage({ id, results: valid });
+    const rgba = new Uint8ClampedArray(buf);
+    const allResults: Uint8Array[] = [];
+
+    if (color) {
+      const channels = [
+        extractChannel(rgba, w, h, 0),
+        extractChannel(rgba, w, h, 1),
+        extractChannel(rgba, w, h, 2),
+      ];
+      for (const ch of channels) {
+        const results = await readBarcodes(ch, { formats: ["QRCode"], maxNumberOfSymbols: 4 });
+        for (const r of results) {
+          if (r.isValid && r.bytes.length > 0) allResults.push(r.bytes);
+        }
+      }
+    } else {
+      const img = new ImageData(rgba, w, h);
+      const results = await readBarcodes(img, { formats: ["QRCode"], maxNumberOfSymbols: 9 });
+      for (const r of results) {
+        if (r.isValid && r.bytes.length > 0) allResults.push(r.bytes);
+      }
+    }
+
+    ctx.postMessage({ id, results: allResults });
   } catch {
     ctx.postMessage({ id, results: [] });
   }

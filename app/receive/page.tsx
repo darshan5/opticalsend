@@ -61,6 +61,9 @@ export default function ReceivePage() {
   const [captureWidth, setCaptureWidth] = useState(1280);
   const [captureFps, setCaptureFps] = useState(60);
   const [workerCount, setWorkerCount] = useState(2);
+  const [colorDecode, setColorDecode] = useState(false);
+  const colorDecodeRef = useRef(false);
+  useEffect(() => { colorDecodeRef.current = colorDecode; }, [colorDecode]);
 
   const finish = useCallback(async (payload: Uint8Array, hashOk: boolean, seconds: number, totalLen: number) => {
     doneRef.current = true;
@@ -127,7 +130,7 @@ export default function ReceivePage() {
     const img = ctx.getImageData(0, 0, vw, vh);
     busyRef.current[slot] = true;
     workersRef.current[slot]!.postMessage(
-      { id: frameIdRef.current++, buf: img.data.buffer, w: vw, h: vh },
+      { id: frameIdRef.current++, buf: img.data.buffer, w: vw, h: vh, color: colorDecodeRef.current },
       [img.data.buffer],
     );
   }, []);
@@ -282,6 +285,13 @@ export default function ReceivePage() {
                 decode workers
                 <select value={workerCount} onChange={(e) => setWorkerCount(Number(e.target.value))}>
                   {[1, 2, 3].map((v) => <option key={v}>{v}</option>)}
+                </select>
+              </label>
+              <label>
+                color decode
+                <select value={colorDecode ? "on" : "off"} onChange={(e) => setColorDecode(e.target.value === "on")}>
+                  <option value="off">Off (B&W)</option>
+                  <option value="on">On (RGB)</option>
                 </select>
               </label>
             </div>
