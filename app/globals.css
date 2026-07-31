@@ -253,6 +253,30 @@ a { color: var(--accent); }
   background: var(--accent);
   transition: width 0.25s;
 }
+.progress-section {
+  width: 100%;
+}
+.progress-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 2px 0;
+  font-size: 14px;
+}
+.progress-pct {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.progress-speed {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.progress-eta {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
 
 /* Metrics */
 .metrics {

@@ -215,10 +215,17 @@ export default function ReceivePage() {
       const dec = decoderRef.current;
       if (dec) {
         const elapsed = (now - startTsRef.current) / 1000;
-        m.rate = `${((dec.framesNew * dec.blockLen) / OVERHEAD_EST / 1024 / Math.max(0.1, elapsed)).toFixed(1)} KB/s`;
+        const bytesPerSec = (dec.framesNew * dec.blockLen) / OVERHEAD_EST / Math.max(0.1, elapsed);
+        m.rate = `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
         m.time = `${elapsed.toFixed(0)}s`;
         m.frames = `${dec.framesNew}/${dec.framesDup}`;
         m.payload = formatSize(dec.totalLen);
+        const pct = dec.framesNew / (dec.k * OVERHEAD_EST);
+        if (pct > 0.05 && bytesPerSec > 0) {
+          const remainBytes = dec.totalLen * (1 - pct);
+          const etaSec = Math.max(1, Math.ceil(remainBytes / bytesPerSec));
+          m.eta = etaSec < 60 ? `${etaSec}s` : `${Math.floor(etaSec / 60)}m ${etaSec % 60}s`;
+        }
       }
       setMetrics(m);
     }, 500);
@@ -237,8 +244,15 @@ export default function ReceivePage() {
       <h1>OPTICALSEND <small>— Receive</small></h1>
 
       {showProgress && (
-        <div className="progress-bar">
-          <div style={{ width: `${progress.toFixed(1)}%` }} />
+        <div className="progress-section">
+          <div className="progress-bar">
+            <div style={{ width: `${progress.toFixed(1)}%` }} />
+          </div>
+          <div className="progress-stats">
+            <span className="progress-pct">{Math.floor(progress)}%</span>
+            <span className="progress-speed">{metrics.rate ?? ""}</span>
+            {metrics.eta && <span className="progress-eta">~{metrics.eta} left</span>}
+          </div>
         </div>
       )}
 
