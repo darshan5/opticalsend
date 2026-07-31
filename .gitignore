@@ -6,4 +6,5 @@ dist
 .dokploy.json
 *.local
 next-env.d.ts
+.playwright-mcp
 public/zxing_reader.wasm
