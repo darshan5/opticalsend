@@ -16,7 +16,10 @@ function formatSize(bytes: number) {
 }
 
 export default function SendPage() {
+  const [mode, setMode] = useState<"file" | "text">("file");
   const [file, setFile] = useState<{ name: string; size: number; data: Uint8Array } | null>(null);
+  const [text, setText] = useState("");
+  const [streaming, setStreaming] = useState(false);
   const [specs, setSpecs] = useState("");
   const [over, setOver] = useState(false);
   const [fps, setFps] = useState(24);
@@ -31,18 +34,15 @@ export default function SendPage() {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const gen = ++genRef.current;
+      setStreaming(true);
 
       const wrapped = wrapPayload(name, payload);
       const sessionId = (Math.floor(Math.random() * 0xffff) + 1) & 0xffff;
       const blockLen = frameBytes - HEADER_LEN;
       const encoder = new LTEncoder(wrapped, blockLen, sessionId);
       const header: FrameHeader = {
-        sessionId,
-        seq: 0,
-        k: encoder.k,
-        blockLen,
-        totalLen: wrapped.length,
-        payloadFnv: fnv1a(wrapped),
+        sessionId, seq: 0, k: encoder.k, blockLen,
+        totalLen: wrapped.length, payloadFnv: fnv1a(wrapped),
       };
 
       let version: number | undefined;
@@ -142,6 +142,12 @@ export default function SendPage() {
     setFile({ name: f.name, size: f.size, data: buf });
   }
 
+  function sendText() {
+    if (!text.trim()) return;
+    const data = new TextEncoder().encode(text);
+    setFile({ name: "__text__.txt", size: data.length, data });
+  }
+
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
     setOver(false);
@@ -152,19 +158,26 @@ export default function SendPage() {
   function clearFile() {
     genRef.current++;
     setFile(null);
+    setStreaming(false);
     setSpecs("");
   }
+
+  const isTextMode = file?.name === "__text__.txt";
 
   return (
     <div className="page">
       <h1>OPTICALSEND <small>— Send</small></h1>
 
-      {!file ? (
+      {!streaming && (
+        <div className="mode-toggle">
+          <button className={mode === "file" ? "active" : ""} onClick={() => setMode("file")}>File</button>
+          <button className={mode === "text" ? "active" : ""} onClick={() => setMode("text")}>Text</button>
+        </div>
+      )}
+
+      {!streaming && mode === "file" && (
         <>
-          <button
-            className="upload-btn"
-            onClick={() => inputRef.current?.click()}
-          >
+          <button className="upload-btn" onClick={() => inputRef.current?.click()}>
             <span className="upload-icon">+</span>
             Choose a file to send
             <span className="upload-sub">Any file type, any size</span>
@@ -185,12 +198,35 @@ export default function SendPage() {
             onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
           />
         </>
-      ) : (
+      )}
+
+      {!streaming && mode === "text" && (
+        <>
+          <textarea
+            className="text-input"
+            placeholder="Type or paste text to send..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={6}
+            autoFocus
+          />
+          <button
+            className="upload-btn"
+            onClick={sendText}
+            style={{ opacity: text.trim() ? 1 : 0.5 }}
+          >
+            Send text
+            <span className="upload-sub">{text.length > 0 ? formatSize(new TextEncoder().encode(text).length) : "type something first"}</span>
+          </button>
+        </>
+      )}
+
+      {streaming && (
         <>
           <div className="file-info">
-            <span className="name">{file.name}</span>
-            <span className="size">{formatSize(file.size)}</span>
-            <button onClick={clearFile} title="Remove file">&times;</button>
+            <span className="name">{isTextMode ? "Text message" : file!.name}</span>
+            <span className="size">{formatSize(file!.size)}</span>
+            <button onClick={clearFile} title="Clear">&times;</button>
           </div>
 
           <p className="hint">{specs}</p>

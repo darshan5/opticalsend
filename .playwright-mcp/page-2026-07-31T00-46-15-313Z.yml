@@ -1,0 +1,18 @@
+- generic [active] [ref=e1]:
+  - alert [ref=e8]
+  - generic [ref=e9]:
+    - heading "OPTICALSEND — Send" [level=1] [ref=e10]
+    - button "+ Choose a file to send Any file type, any size" [ref=e11] [cursor=pointer]:
+      - generic [ref=e12]: +
+      - text: Choose a file to send
+      - generic [ref=e13]: Any file type, any size
+    - paragraph [ref=e15] [cursor=pointer]: or drag and drop here
+    - navigation [ref=e16]:
+      - link "↑ Send" [ref=e17] [cursor=pointer]:
+        - /url: /send
+        - generic [ref=e18]: ↑
+        - text: Send
+      - link "↓ Receive" [ref=e19] [cursor=pointer]:
+        - /url: /receive
+        - generic [ref=e20]: ↓
+        - text: Receive

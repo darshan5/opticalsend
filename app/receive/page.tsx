@@ -28,13 +28,22 @@ function isImage(name: string): boolean {
   return /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(name);
 }
 
+interface ReceiveResult {
+  name: string;
+  url: string;
+  isImg: boolean;
+  isText: boolean;
+  text?: string;
+}
+
 export default function ReceivePage() {
   const [status, setStatus] = useState("Point the camera at the sender's code");
   const [started, setStarted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showProgress, setShowProgress] = useState(false);
   const [metrics, setMetrics] = useState<Record<string, string>>({});
-  const [result, setResult] = useState<{ name: string; url: string; isImg: boolean } | null>(null);
+  const [result, setResult] = useState<ReceiveResult | null>(null);
+  const [copied, setCopied] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const doneRef = useRef(false);
   const decoderRef = useRef<LTDecoder | null>(null);
@@ -60,14 +69,21 @@ export default function ReceivePage() {
     setProgress(100);
 
     const { name, bytes } = unwrapPayload(payload);
+    const isText = name === "__text__.txt";
     const mime = mimeFromName(name);
     const buf = new Uint8Array(bytes.length);
     buf.set(bytes);
+
+    let textContent: string | undefined;
+    if (isText) {
+      textContent = new TextDecoder().decode(buf);
+    }
+
     const url = URL.createObjectURL(new Blob([buf], { type: mime }));
     const kb = Math.round(totalLen / 1024);
     const rate = (totalLen / 1024 / seconds).toFixed(1);
     setStatus(`${kb} KB in ${seconds.toFixed(1)}s · ${rate} KB/s · hash ${hashOk ? "verified" : "MISMATCH"}`);
-    setResult({ name, url, isImg: isImage(name) });
+    setResult({ name, url, isImg: isImage(name), isText, text: textContent });
   }, []);
 
   const onDecoded = useCallback((bytes: Uint8Array) => {
@@ -202,8 +218,6 @@ export default function ReceivePage() {
         m.rate = `${((dec.framesNew * dec.blockLen) / OVERHEAD_EST / 1024 / Math.max(0.1, elapsed)).toFixed(1)} KB/s`;
         m.time = `${elapsed.toFixed(0)}s`;
         m.frames = `${dec.framesNew}/${dec.framesDup}`;
-        m.k = String(dec.k);
-        m.blockLen = `${dec.blockLen} B`;
         m.payload = formatSize(dec.totalLen);
       }
       setMetrics(m);
@@ -211,9 +225,22 @@ export default function ReceivePage() {
     return () => clearInterval(id);
   }, [started]);
 
+  async function copyText() {
+    if (!result?.text) return;
+    await navigator.clipboard.writeText(result.text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   return (
     <div className="page">
       <h1>OPTICALSEND <small>— Receive</small></h1>
+
+      {showProgress && (
+        <div className="progress-bar">
+          <div style={{ width: `${progress.toFixed(1)}%` }} />
+        </div>
+      )}
 
       <p className="hint">{status}</p>
 
@@ -253,11 +280,9 @@ export default function ReceivePage() {
       {started && !result && (
         <>
           <div className="metrics">
-            <div className="metric"><div className="k">Capture FPS</div><div className="v">{metrics.capFps ?? "—"}</div></div>
-            <div className="metric"><div className="k">Decode FPS</div><div className="v amber">{metrics.decFps ?? "—"}</div></div>
             <div className="metric"><div className="k">Goodput</div><div className="v amber">{metrics.rate ?? "—"}</div></div>
+            <div className="metric"><div className="k">Decode FPS</div><div className="v amber">{metrics.decFps ?? "—"}</div></div>
             <div className="metric"><div className="k">Elapsed</div><div className="v">{metrics.time ?? "—"}</div></div>
-            <div className="metric"><div className="k">Frames</div><div className="v">{metrics.frames ?? "—"}</div></div>
             <div className="metric"><div className="k">Payload</div><div className="v">{metrics.payload ?? "—"}</div></div>
           </div>
           <div className="preview">
@@ -266,22 +291,30 @@ export default function ReceivePage() {
         </>
       )}
 
-      {showProgress && (
-        <div className="progress-bar">
-          <div style={{ width: `${progress.toFixed(1)}%` }} />
-        </div>
-      )}
-
       {result && (
         <>
           <p className="done-text">Transfer Complete!</p>
-          {result.isImg && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img className="received" src={result.url} alt="Received file" />
+
+          {result.isText && result.text ? (
+            <>
+              <div className="text-result">
+                <div className="text-result-content">{result.text}</div>
+              </div>
+              <button className="upload-btn" onClick={copyText}>
+                {copied ? "Copied!" : "Copy text"}
+              </button>
+            </>
+          ) : (
+            <>
+              {result.isImg && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className="received" src={result.url} alt="Received file" />
+              )}
+              <a className="btn" href={result.url} download={result.name} style={{ width: "100%", padding: "16px" }}>
+                Download {result.name}
+              </a>
+            </>
           )}
-          <a className="btn" href={result.url} download={result.name}>
-            Download {result.name}
-          </a>
         </>
       )}
 
