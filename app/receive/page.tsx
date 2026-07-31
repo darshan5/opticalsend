@@ -62,13 +62,13 @@ export default function ReceivePage() {
   const [captureFps, setCaptureFps] = useState(60);
   const [workerCount, setWorkerCount] = useState(2);
 
-  const finish = useCallback((payload: Uint8Array, hashOk: boolean, seconds: number, totalLen: number) => {
+  const finish = useCallback(async (payload: Uint8Array, hashOk: boolean, seconds: number, totalLen: number) => {
     doneRef.current = true;
     captureGenRef.current++;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     setProgress(100);
 
-    const { name, bytes } = unwrapPayload(payload);
+    const { name, bytes } = await unwrapPayload(payload);
     const isText = name === "__text__.txt";
     const mime = mimeFromName(name);
     const buf = new Uint8Array(bytes.length);

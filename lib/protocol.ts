@@ -67,17 +67,70 @@ export function splitmix32(seed: number): () => number {
   };
 }
 
-export function wrapPayload(name: string, data: Uint8Array): Uint8Array {
-  const nameBytes = new TextEncoder().encode(name);
-  const out = new Uint8Array(2 + nameBytes.length + data.length);
-  new DataView(out.buffer).setUint16(0, nameBytes.length, true);
-  out.set(nameBytes, 2);
-  out.set(data, 2 + nameBytes.length);
+const FLAG_COMPRESSED = 0x01;
+
+async function gzipCompress(data: Uint8Array): Promise<Uint8Array> {
+  const cs = new CompressionStream("gzip");
+  const writer = cs.writable.getWriter();
+  writer.write(new Uint8Array(data) as unknown as BufferSource);
+  writer.close();
+  const chunks: Uint8Array[] = [];
+  const reader = cs.readable.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  const total = chunks.reduce((a, c) => a + c.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { out.set(c, off); off += c.length; }
   return out;
 }
 
-export function unwrapPayload(data: Uint8Array): { name: string; bytes: Uint8Array } {
-  const nameLen = new DataView(data.buffer, data.byteOffset).getUint16(0, true);
-  const name = new TextDecoder().decode(data.subarray(2, 2 + nameLen));
-  return { name, bytes: data.subarray(2 + nameLen) };
+async function gzipDecompress(data: Uint8Array): Promise<Uint8Array> {
+  const ds = new DecompressionStream("gzip");
+  const writer = ds.writable.getWriter();
+  writer.write(new Uint8Array(data) as unknown as BufferSource);
+  writer.close();
+  const chunks: Uint8Array[] = [];
+  const reader = ds.readable.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  const total = chunks.reduce((a, c) => a + c.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { out.set(c, off); off += c.length; }
+  return out;
+}
+
+export async function wrapPayload(name: string, data: Uint8Array): Promise<Uint8Array> {
+  const nameBytes = new TextEncoder().encode(name);
+  let flags = 0;
+  let payload = data;
+  const compressed = await gzipCompress(data);
+  if (compressed.length < data.length * 0.9) {
+    flags |= FLAG_COMPRESSED;
+    payload = compressed;
+  }
+  const out = new Uint8Array(1 + 2 + nameBytes.length + payload.length);
+  out[0] = flags;
+  new DataView(out.buffer).setUint16(1, nameBytes.length, true);
+  out.set(nameBytes, 3);
+  out.set(payload, 3 + nameBytes.length);
+  return out;
+}
+
+export async function unwrapPayload(data: Uint8Array): Promise<{ name: string; bytes: Uint8Array }> {
+  const flags = data[0]!;
+  const nameLen = new DataView(data.buffer, data.byteOffset + 1).getUint16(0, true);
+  const name = new TextDecoder().decode(data.subarray(3, 3 + nameLen));
+  let bytes = data.subarray(3 + nameLen);
+  if (flags & FLAG_COMPRESSED) {
+    bytes = await gzipDecompress(bytes);
+  }
+  return { name, bytes };
 }

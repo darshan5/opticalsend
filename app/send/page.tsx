@@ -30,13 +30,17 @@ export default function SendPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const startStream = useCallback(
-    (payload: Uint8Array, name: string) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+    async (payload: Uint8Array, name: string) => {
       const gen = ++genRef.current;
       setStreaming(true);
+      await new Promise((r) => setTimeout(r, 50));
+      const canvas = canvasRef.current;
+      if (!canvas || gen !== genRef.current) return;
 
-      const wrapped = wrapPayload(name, payload);
+      const wrapped = await wrapPayload(name, payload);
+      const ratio = wrapped.length < payload.length + 20
+        ? ` · ${Math.round((1 - wrapped.length / (payload.length + name.length + 3)) * 100)}% compressed`
+        : "";
       const sessionId = (Math.floor(Math.random() * 0xffff) + 1) & 0xffff;
       const blockLen = frameBytes - HEADER_LEN;
       const encoder = new LTEncoder(wrapped, blockLen, sessionId);
@@ -77,7 +81,7 @@ export default function SendPage() {
           modules = qr.modules.size;
           sizeCanvas();
           setSpecs(
-            `${fps} FPS · ${frameBytes} B/frame · V${version} · ECC ${ecc} · ${formatSize(wrapped.length)} · K=${encoder.k}`,
+            `${fps} FPS · ${frameBytes} B/frame · V${version} · ECC ${ecc} · ${formatSize(wrapped.length)}${ratio} · K=${encoder.k}`,
           );
         }
         const size = qr.modules.size;
