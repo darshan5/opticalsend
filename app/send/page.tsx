@@ -159,11 +159,6 @@ export default function SendPage() {
     <div className="page">
       <h1>OPTICALSEND <small>— Send</small></h1>
 
-      <nav className="nav">
-        <Link href="/send" className="active">Send</Link>
-        <Link href="/receive">Receive</Link>
-      </nav>
-
       {!file ? (
         <>
           <button
@@ -233,6 +228,17 @@ export default function SendPage() {
           </p>
         </>
       )}
+
+      <nav className="bottom-nav">
+        <Link href="/send" className="active">
+          <span className="nav-icon">&uarr;</span>
+          Send
+        </Link>
+        <Link href="/receive">
+          <span className="nav-icon">&darr;</span>
+          Receive
+        </Link>
+      </nav>
     </div>
   );
 }

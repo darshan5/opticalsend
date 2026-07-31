@@ -103,19 +103,21 @@ a { color: var(--accent); }
   border: 1px solid var(--accent);
 }
 
-/* Nav — big toggle buttons */
-.nav {
+/* Bottom nav bar */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
-  gap: 0;
-  width: 100%;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
+  border-top: 1px solid var(--border);
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }
-.nav a {
+.bottom-nav a {
   flex: 1;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--muted);
   text-decoration: none;
@@ -123,12 +125,17 @@ a { color: var(--accent); }
   text-align: center;
   transition: background 0.15s, color 0.15s;
   -webkit-tap-highlight-color: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
-.nav a.active {
-  color: var(--bg);
-  background: var(--accent);
+.bottom-nav a .nav-icon { font-size: 22px; line-height: 1; }
+.bottom-nav a.active {
+  color: var(--accent);
 }
-.nav a:not(.active):active { background: var(--border); }
+.bottom-nav a:not(.active):active { background: var(--border); }
+.page { padding-bottom: 80px; }
 
 /* Upload button */
 .upload-btn {

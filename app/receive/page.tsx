@@ -215,11 +215,6 @@ export default function ReceivePage() {
     <div className="page">
       <h1>OPTICALSEND <small>— Receive</small></h1>
 
-      <nav className="nav">
-        <Link href="/send">Send</Link>
-        <Link href="/receive" className="active">Receive</Link>
-      </nav>
-
       <p className="hint">{status}</p>
 
       {!started && !result && (
@@ -293,6 +288,17 @@ export default function ReceivePage() {
       {!started && !result && (
         <video ref={videoRef} muted playsInline style={{ display: "none" }} />
       )}
+
+      <nav className="bottom-nav">
+        <Link href="/send">
+          <span className="nav-icon">&uarr;</span>
+          Send
+        </Link>
+        <Link href="/receive" className="active">
+          <span className="nav-icon">&darr;</span>
+          Receive
+        </Link>
+      </nav>
     </div>
   );
 }
