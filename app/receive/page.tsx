@@ -80,9 +80,12 @@ export default function ReceivePage() {
     }
 
     const url = URL.createObjectURL(new Blob([buf], { type: mime }));
-    const kb = Math.round(totalLen / 1024);
     const rate = (totalLen / 1024 / seconds).toFixed(1);
-    setStatus(`${kb} KB in ${seconds.toFixed(1)}s · ${rate} KB/s · hash ${hashOk ? "verified" : "MISMATCH"}`);
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    const duration = h > 0 ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
+    setStatus(`${formatSize(totalLen)} in ${duration} · ${rate} KB/s · hash ${hashOk ? "verified" : "MISMATCH"}`);
     setResult({ name, url, isImg: isImage(name), isText, text: textContent });
   }, []);
 
